@@ -41,6 +41,9 @@ Element min_elements[MAXWORKERS];
 //===================================================
 
 /* a reusable counter barrier */
+
+
+
 void Barrier() 
 {
   pthread_mutex_lock(&barrier);
@@ -60,6 +63,10 @@ void Barrier()
 }
 
 /* timer */
+
+
+
+
 double read_timer() 
 {
     static bool initialized = false;
@@ -83,6 +90,11 @@ int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
 void *Worker(void *);
+
+
+
+
+
 
 /* read command line, initialize, and create threads */
 int main(int argc, char *argv[]) 
@@ -150,17 +162,28 @@ for (i = 0; i < size; i++) {
   pthread_exit(NULL);
 }
 
+
+
+
 /* Each worker sums the values in one strip of the matrix.
    After a barrier, worker(0) computes and prints the total */
+
+
+
+
+
+
 void *Worker(void *arg) {
   long myid = (long) arg;
   int total, i, j, first, last;
-  /* Local tracking for this worker's strip */
+  //======A========
   Element myMax = {INT_MIN, -1, -1};
   Element myMin = {INT_MAX, -1, -1};
 
+//==========================================
+
 #ifdef DEBUG
-  printf("worker %d (pthread id %d) has started\n", myid, pthread_self());
+  printf("worker %ld (pthread id %p) has started\n", myid, (void *)pthread_self());
 #endif
 
   /* determine first and last rows of my strip */
@@ -173,40 +196,41 @@ void *Worker(void *arg) {
   {
     for (j = 0; j < size; j++)
     {
-      total += matrix[i][j];
-
-      if (total > myMax.val)
-      {
-          myMax.val = total;
+      int val = matrix[i][j];
+      total += val;
+//===============A==================
+      if (val > myMax.val) {
+          myMax.val = val;
           myMax.row = i;
           myMax.col = j;
       }
-      if (total < myMin.val)
-      {
-          myMin.val = total;
+      if (val < myMin.val) {
+          myMin.val = val;
           myMin.row = i;
           myMin.col = j;
       }
-
     }
-      
-  sums[myid] = total;
-}
 
+  }
+
+//==========================================
+  sums[myid] = total;
+	
+//===============A==================
   max_elements[myid] = myMax;
   min_elements[myid] = myMin;
-
+//==========================================
   Barrier();
 
-  if (myid == 0) {
+  if (myid == 0) 
+  {
     total = 0;
-
     Element finalMax = {INT_MIN, -1, -1};
     Element finalMin = {INT_MAX, -1, -1};
-    
     for (i = 0; i < numWorkers; i++)
     {
       total += sums[i];
+     //==============A===========================
       if (max_elements[i].val > finalMax.val) {
           finalMax = max_elements[i];
       }
@@ -214,13 +238,13 @@ void *Worker(void *arg) {
           finalMin = min_elements[i];
       }
     }
+     //==========================================
     /* get end time */
     end_time = read_timer();
     /* print results */
-    printf("The total is %d\n", total);
     printf("Max value: %d at [%d][%d]\n", finalMax.val, finalMax.row, finalMax.col);
     printf("Min value: %d at [%d][%d]\n", finalMin.val, finalMin.row, finalMin.col);
     printf("The execution time is %g sec\n", end_time - start_time);
   }
-  return NULL;  
+  return NULL;
 }
