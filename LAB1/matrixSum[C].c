@@ -1,14 +1,4 @@
-/* matrix summation using pthreads
 
-   features: uses a barrier; the Worker[0] computes
-             the total sum from partial sums computed by Workers
-             and prints the total sum to the standard output
-
-   usage under Linux:
-     gcc matrixSum.c -lpthread
-     a.out size numWorkers
-
-*/
 #ifndef _REENTRANT 
 #define _REENTRANT 
 #endif 
@@ -35,16 +25,17 @@ typedef struct
     int col;
 } Element;
 
-//======================== B ==========================
+
 typedef struct {
     int partialSum;
     Element localMax;
     Element localMin;
 } WorkerResults;
-//===================================================
-int nextRow = 0;             /* The "Bag": shared row counter */
+//=======================C===========================
+ /* The "Bag": shared row counter */
+int nextRow = 0;            
 pthread_mutex_t bagMutex;
-
+//==================================================
 //Element max_elements[MAXWORKERS]; 
 //Element min_elements[MAXWORKERS];
 
@@ -123,9 +114,11 @@ int main(int argc, char *argv[])
   size = (argc > 1)? atoi(argv[1]) : MAXSIZE;
 
   numWorkers = (argc > 2)? atoi(argv[2]) : MAXWORKERS;
-  
+
+//========================C==========================
   pthread_mutex_init(&bagMutex, NULL);
 
+//===================================================
 
   /* initialize the matrix */
   /*
@@ -170,10 +163,10 @@ pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
   {
      WorkerResults *res;
      
-     // Main thread waits for the thread 'l' to finish and captures its pointer
+// The main thread joins each worker and performs the global reduction
      pthread_join(workerid[l], (void **)&res); 
 
-     // Reduction: Update the final values with the data from the worker
+
      finalTotal += res->partialSum;
      if (res->localMax.val > finalMax.val) finalMax = res->localMax;
      if (res->localMin.val < finalMin.val) finalMin = res->localMin;
@@ -217,17 +210,23 @@ void *Worker(void *arg) {
 #endif
 
   /* determine first and last rows of my strip */
+	// ====================C======================
   while (1) {
     // 1. Lock the bag to get a task
     pthread_mutex_lock(&bagMutex);
+
     row = nextRow;      // Read current row
     nextRow++;          // Increment for the next worker
-    pthread_mutex_unlock(&bagMutex);
+	  
+    pthread_mutex_unlock(&bagMutex); // 2. Exit Critical Section
 
-    // 2. Check if there are rows left to process
-    if (row >= size) break;
+    // 3. Check if there are rows left to process
+    if (row >= size) 
+	{
+		break;
+	}
 
-    // 3. Process the single row (the task)
+	  // 4. Execute the Task: Process the row we just grabbed
     for (j = 0; j < size; j++) {
       int val = matrix[row][j];
       myResults->partialSum += val;
@@ -242,5 +241,6 @@ void *Worker(void *arg) {
     
 
   }
+	// Hand the pointer back to the main thread's join call
   return (void *)myResults;
 }
