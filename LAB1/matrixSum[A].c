@@ -1,14 +1,3 @@
-/* matrix summation using pthreads
-
-   features: uses a barrier; the Worker[0] computes
-             the total sum from partial sums computed by Workers
-             and prints the total sum to the standard output
-
-   usage under Linux:
-     gcc matrixSum.c -lpthread
-     a.out size numWorkers
-
-*/
 #ifndef _REENTRANT 
 #define _REENTRANT 
 #endif 
@@ -28,6 +17,7 @@ int numWorkers;           /* number of workers */
 int numArrived = 0;       /* number who have arrived */
 
 /* Added this struct to store value and position together */
+//======================A========================
 typedef struct
  {
     int val;
@@ -36,14 +26,13 @@ typedef struct
 } Element;
 
 //======================== A ==========================
+// Global arrays to store the best results found by each individual worker
 Element max_elements[MAXWORKERS]; 
 Element min_elements[MAXWORKERS];
 //===================================================
 
 /* a reusable counter barrier */
-
-
-
+//did not change anything
 void Barrier() 
 {
   pthread_mutex_lock(&barrier);
@@ -63,10 +52,7 @@ void Barrier()
 }
 
 /* timer */
-
-
-
-
+//did not change anything
 double read_timer() 
 {
     static bool initialized = false;
@@ -84,16 +70,13 @@ double read_timer()
     return (end.tv_sec - start.tv_sec) + 1.0e-6 * (end.tv_usec - start.tv_usec);
 }
 
+
 double start_time, end_time; /* start and end times */
 int size, stripSize;  /* assume size is multiple of numWorkers */
 int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
 void *Worker(void *);
-
-
-
-
 
 
 /* read command line, initialize, and create threads */
@@ -133,7 +116,7 @@ int main(int argc, char *argv[])
 
   }*/
 
-  //modified intiliasiation so that it is not filled only with 1s anymore
+  //!!!! modified intiliasiation so that it is not filled only with 1s anymore
 srand(time(NULL)); 
 for (i = 0; i < size; i++) {
     for (j = 0; j < size; j++) {
@@ -163,20 +146,15 @@ for (i = 0; i < size; i++) {
 }
 
 
-
-
 /* Each worker sums the values in one strip of the matrix.
    After a barrier, worker(0) computes and prints the total */
-
-
-
-
 
 
 void *Worker(void *arg) {
   long myid = (long) arg;
   int total, i, j, first, last;
   //======A========
+// LOCAL TRACKING: Each worker starts with the most extreme possible values
   Element myMax = {INT_MIN, -1, -1};
   Element myMin = {INT_MAX, -1, -1};
 
@@ -199,6 +177,7 @@ void *Worker(void *arg) {
       int val = matrix[i][j];
       total += val;
 //===============A==================
+// COMPARISON LOGIC: Check if current element is a new local max or min
       if (val > myMax.val) {
           myMax.val = val;
           myMax.row = i;
@@ -217,6 +196,7 @@ void *Worker(void *arg) {
   sums[myid] = total;
 	
 //===============A==================
+// SHARING RESULTS: Save local results to global arrays for Worker 0 to access
   max_elements[myid] = myMax;
   min_elements[myid] = myMin;
 //==========================================
@@ -225,16 +205,23 @@ void *Worker(void *arg) {
   if (myid == 0) 
   {
     total = 0;
+	 
+// INITIALIZE GLOBAL WINNERS: Start with the first possible values
     Element finalMax = {INT_MIN, -1, -1};
     Element finalMin = {INT_MAX, -1, -1};
+// GLOBAL REDUCTION: Iterate through the "winners" of every worker
     for (i = 0; i < numWorkers; i++)
     {
       total += sums[i];
      //==============A===========================
-      if (max_elements[i].val > finalMax.val) {
+		// Update global max if a worker found a higher value
+      if (max_elements[i].val > finalMax.val) 
+	  {
           finalMax = max_elements[i];
       }
-      if (min_elements[i].val < finalMin.val) {
+		// Update global min if a worker found a smaller value
+      if (min_elements[i].val < finalMin.val)
+	  {
           finalMin = min_elements[i];
       }
     }
