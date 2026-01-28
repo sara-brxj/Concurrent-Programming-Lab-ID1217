@@ -32,9 +32,18 @@ int compare_ints(const void* a, const void* b)
 int partition(int* arr, int left, int right) 
 {
     int mid = left + (right - left) / 2;
-    if (arr[mid] < arr[left]) swap(&arr[mid], &arr[left]);
-    if (arr[right] < arr[left]) swap(&arr[right], &arr[left]);
-    if (arr[right] < arr[mid]) swap(&arr[right], &arr[mid]);
+    if (arr[mid] < arr[left]) 
+    {
+        swap(&arr[mid], &arr[left]);
+    }
+    if (arr[right] < arr[left])
+    {
+        swap(&arr[right], &arr[left]);
+    }
+    if (arr[right] < arr[mid]) 
+    {
+        swap(&arr[right], &arr[mid]);
+    }
 
     swap(&arr[mid], &arr[right]);
     int pivot = arr[right];
