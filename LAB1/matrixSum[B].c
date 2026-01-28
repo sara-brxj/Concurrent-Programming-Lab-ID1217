@@ -36,6 +36,8 @@ typedef struct
 } Element;
 
 //======================== B ==========================
+// This structure is the "package" that each worker will fill up and 
+// hand back to the main thread upon completion.
 typedef struct {
     int partialSum;
     Element localMax;
@@ -47,6 +49,7 @@ Element max_elements[MAXWORKERS];
 Element min_elements[MAXWORKERS];
 
 
+// we removed barrier since we will not be using it anyway
 
 /*void Barrier() 
 {
@@ -65,8 +68,6 @@ Element min_elements[MAXWORKERS];
    
   pthread_mutex_unlock(&barrier);
 }*/
-
-
 
 
 
@@ -108,6 +109,7 @@ int main(int argc, char *argv[])
   pthread_t workerid[MAXWORKERS];
 
 //==============B========================
+// We initialize these variables in main because the main thread is now responsible for the final calculation (reduction).
   int finalTotal = 0;
   Element finalMax = {INT_MIN, -1, -1};
   Element finalMin = {INT_MAX, -1, -1};
@@ -168,11 +170,14 @@ for (i = 0; i < size; i++) {
      pthread_create(&workerid[l], &attr, Worker, (void *) l);
   } 
   //pthread_exit(NULL);
+//	===================== B ==========================
+//This loop replaces the Barrier logic from Design A. Instead of Worker 0 doing the work, the Main Thread waits for everyone.
   for (l = 0; l < numWorkers; l++)
   {
      WorkerResults *res;
      
      // Main thread waits for the thread 'l' to finish and captures its pointer
+	 // The second argument captures the pointer returned by the Worker.
      pthread_join(workerid[l], (void **)&res); 
 
      // Reduction: Update the final values with the data from the worker
@@ -180,7 +185,8 @@ for (i = 0; i < size; i++) {
      if (res->localMax.val > finalMax.val) finalMax = res->localMax;
      if (res->localMin.val < finalMin.val) finalMin = res->localMin;
 
-     // Free the heap memory allocated by the Worker thread
+
+// CRITICAL: Since the worker used malloc, the main thread MUST free the memory now that the reduction for this worker is done.
      free(res);
   }
   end_time = read_timer();
@@ -209,6 +215,8 @@ void *Worker(void *arg) {
   long myid = (long) arg;
   int total, i, j, first, last;
   //======B====================================
+//Dynamic allocation, each worker allocates its own result structure on the heap.
+// This allows the data to persist after the Worker function returns.
   WorkerResults *myResults = (WorkerResults *)malloc(sizeof(WorkerResults));
   myResults->partialSum = 0;
   myResults->localMax = (Element){INT_MIN, -1, -1};
@@ -231,6 +239,7 @@ void *Worker(void *arg) {
     {
       int val = matrix[i][j];
       total += val;
+	// Update the values inside the dynamically allocated struct
       myResults->partialSum += val;
      if(val > myResults->localMax.val) 
      {
@@ -248,6 +257,9 @@ void *Worker(void *arg) {
     }
 
   }
+
+// Instead of waiting at a barrier, the worker simply returns the 
+// pointer to its results. The pthread_join in main will catch this.
 
 return (void *)myResults;
 }
