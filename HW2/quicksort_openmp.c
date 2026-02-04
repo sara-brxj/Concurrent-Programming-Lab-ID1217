@@ -39,6 +39,7 @@ void quicksort(int* arr, int left, int right) {
         // Optimization: only create tasks if the sub-array is large enough
         if (right - left > THREAD_THRESHOLD) {
             // Create a parallel task for the left partition
+            // Makes copies of variables at the exact moment the task is created to ensure it has the right boundaries
             #pragma omp task firstprivate(arr, left, p)
             quicksort(arr, left, p);
 // Create a parallel task for the right partition
